@@ -607,13 +607,6 @@
       <button class="modal-close-btn" onclick="hideSettingsModal()">✖️</button>
       <h3>⚙️ Settings & Help</h3>
       <div class="setting-item">
-          <label for="dragAndDropToggle">Enable Drag & Drop (Desktop only):</label>
-          <label class="switch">
-              <input type="checkbox" id="dragAndDropToggle" checked>
-              <span class="slider round"></span>
-          </label>
-      </div>
-      <div class="setting-item">
           <label for="editTierNamesToggle">Edit Tier Names:</label>
           <label class="switch">
               <input type="checkbox" id="editTierNamesToggle">
@@ -634,7 +627,7 @@
           <br>
           1. Use the text field to search for movies/series.
           <br>
-          2. **Drag & Drop** posters between Tiers (SSS to C) or to the "Movies & Series" area below. (Can be disabled in settings to use **Click-to-Move** instead.)
+          2. **Drag & Drop** posters between Tiers (SSS to C) or to the "Movies & Series" area below.
           <br>
           3. Upload your own images using "Choose Files".
           <br>
@@ -664,7 +657,7 @@
     const settingsModal = document.getElementById('settingsModal');
     const moveToTierModal = document.getElementById('moveToTierModal');
     const tierChoiceButtonsContainer = document.getElementById('tierChoiceButtons');
-    const dragAndDropToggle = document.getElementById('dragAndDropToggle');
+    // Removed dragAndDropToggle as it's always enabled for desktop, always click for mobile
     const editTierNamesToggle = document.getElementById('editTierNamesToggle');
     const tierEditArea = document.getElementById('tierEditArea');
 
@@ -738,7 +731,7 @@
         img.alt = title;
         img.title = `${title} (${year || 'N/A'}) • ${type || 'N/A'}`;
         img.classList.add('poster');
-        img.draggable = !isMobile && dragAndDropToggle.checked; // Draggable based on settings
+        img.draggable = !isMobile; // Draggable is always true for desktop, false for mobile
         img.dataset.movieTitle = movieTitle || title;
         img.addEventListener('dragstart', dragStart);
         img.addEventListener('dragend', dragEnd);
@@ -788,9 +781,9 @@
       }
     });
 
-    // Drag & Drop functions (Desktop only, when enabled)
+    // Drag & Drop functions (Desktop only)
     function dragStart(e) {
-      if (e.target.draggable) {
+      if (!isMobile) { // Only allow dragStart on desktop
         e.dataTransfer.setData('text/plain', e.target.src);
         e.target.classList.add('dragging');
       } else {
@@ -804,13 +797,13 @@
     tiers.forEach(tier => {
       const contentArea = tier.querySelector('.tier-content-area');
       contentArea.addEventListener('dragover', (e) => {
-        if (!isMobile && dragAndDropToggle.checked) e.preventDefault();
+        if (!isMobile) e.preventDefault(); // Allow dragover on desktop
       });
       contentArea.addEventListener('drop', (e) => {
-        if (!isMobile && dragAndDropToggle.checked) {
+        if (!isMobile) { // Only allow drop on desktop
           e.preventDefault();
           const src = e.dataTransfer.getData('text/plain');
-          const img = document.querySelector(`.poster.dragging[src='${src}']`); // Ensure it's the actively dragged item
+          const img = document.querySelector(`.poster.dragging[src='${src}']`);
           if (img) {
             contentArea.appendChild(img);
           }
@@ -819,13 +812,13 @@
     });
 
     unranked.addEventListener('dragover', (e) => {
-      if (!isMobile && dragAndDropToggle.checked) e.preventDefault();
+      if (!isMobile) e.preventDefault(); // Allow dragover on desktop
     });
     unranked.addEventListener('drop', (e) => {
-      if (!isMobile && dragAndDropToggle.checked) {
+      if (!isMobile) { // Only allow drop on desktop
         e.preventDefault();
         const src = e.dataTransfer.getData('text/plain');
-        const img = document.querySelector(`.poster.dragging[src='${src}']`); // Ensure it's the actively dragged item
+        const img = document.querySelector(`.poster.dragging[src='${src}']`);
         if (img) {
           unranked.appendChild(img);
         }
@@ -837,7 +830,7 @@
       const allPosters = document.querySelectorAll('.poster');
       allPosters.forEach(poster => {
           unranked.appendChild(poster);
-          poster.draggable = !isMobile && dragAndDropToggle.checked;
+          poster.draggable = !isMobile; // Reset draggable state correctly
       });
     });
 
@@ -998,101 +991,4 @@
         moveToTierModal.classList.remove('active');
     }
 
-    // Poster Click handler (Mobile or when Drag & Drop is disabled)
-    function handlePosterClick(e) {
-        if (isMobile || !dragAndDropToggle.checked) {
-            showMoveToTierModal(e.currentTarget);
-        }
-    }
-
-    // Settings Modal
-    document.getElementById('settingsBtn').addEventListener('click', () => {
-        settingsModal.classList.add('active');
-        generateTierEditInputs();
-    });
-
-    function hideSettingsModal() {
-        settingsModal.classList.remove('active');
-        saveCustomTierNames();
-        updateTierLabels();
-    }
-
-    // Drag & Drop Toggle Logic
-    dragAndDropToggle.addEventListener('change', () => {
-        localStorage.setItem('useDragAndDrop', dragAndDropToggle.checked);
-        document.querySelectorAll('.poster').forEach(poster => {
-            poster.draggable = !isMobile && dragAndDropToggle.checked;
-            poster.style.cursor = (!isMobile && dragAndDropToggle.checked) ? 'grab' : 'pointer';
-        });
-    });
-
-    const savedDragAndDropSetting = localStorage.getItem('useDragAndDrop');
-    if (savedDragAndDropSetting !== null) {
-        dragAndDropToggle.checked = JSON.parse(savedDragAndDropSetting);
-    }
-
-    // Edit Tier Names Toggle Logic
-    editTierNamesToggle.addEventListener('change', () => {
-        tierEditArea.style.display = editTierNamesToggle.checked ? 'flex' : 'none';
-        localStorage.setItem('editTierNamesEnabled', editTierNamesToggle.checked);
-    });
-    const savedEditTierNamesSetting = localStorage.getItem('editTierNamesEnabled');
-    if (savedEditTierNamesSetting !== null) {
-        editTierNamesToggle.checked = JSON.parse(savedEditTierNamesSetting);
-        tierEditArea.style.display = editTierNamesToggle.checked ? 'flex' : 'none';
-    }
-
-    // Functions for editing Tier Names
-    function generateTierEditInputs() {
-        tierEditArea.innerHTML = '<h4>Customize Tier Names:</h4>';
-        const tierOrder = ['SSS', 'SS', 'S', 'A+', 'B', 'C'];
-        tierOrder.forEach(tierId => {
-            const data = currentTierData[tierId] || defaultTierData[tierId];
-            const div = document.createElement('div');
-            div.className = 'tier-edit-item';
-            div.innerHTML = `
-                <label>${data.icon} ${defaultTierData[tierId].label} Label:</label>
-                <input type="text" data-tier-id="${tierId}" data-field="label" value="${data.label}">
-                <label>Subtitle:</label>
-                <input type="text" data-tier-id="${tierId}" data-field="subtitle" value="${data.subtitle}">
-                <label>Icon (max 2):</label>
-                <input type="text" data-tier-id="${tierId}" data-field="icon" value="${data.icon}" maxlength="2">
-            `;
-            tierEditArea.appendChild(div);
-        });
-        tierEditArea.querySelectorAll('input').forEach(input => {
-            input.addEventListener('change', (e) => {
-                const tierId = e.target.dataset.tierId;
-                const field = e.target.dataset.field;
-                currentTierData[tierId][field] = e.target.value;
-            });
-        });
-    }
-
-    function saveCustomTierNames() {
-        localStorage.setItem('customTierNames', JSON.stringify(currentTierData));
-    }
-
-    // Resize event listener for mobile/desktop detection
-    window.addEventListener('resize', () => {
-        const oldIsMobile = isMobile;
-        isMobile = window.innerWidth <= 768;
-        if (oldIsMobile !== isMobile) { // Only update if mobile status changed
-            document.querySelectorAll('.poster').forEach(poster => {
-                poster.draggable = !isMobile && dragAndDropToggle.checked;
-                poster.style.cursor = (!isMobile && dragAndDropToggle.checked) ? 'grab' : 'pointer';
-            });
-        }
-    });
-
-    // Initial setup on page load
-    updateTierLabels();
-    generateTierChoiceButtons();
-    // Set initial draggable state for all existing posters
-    document.querySelectorAll('.poster').forEach(poster => {
-        poster.draggable = !isMobile && dragAndDropToggle.checked;
-        poster.style.cursor = (!isMobile && dragAndDropToggle.checked) ? 'grab' : 'pointer';
-    });
-  </script>
-</body>
-</html>
+    // Poster Click handler (Mobile or when Drag & Drop 
